@@ -1,0 +1,158 @@
+---
+title: "SafeBabies Company"
+author: "Mohamed Megahed"
+date: "February 28, 2020"
+output: html_document
+---
+
+
+#### **SafeBabies Problem**
+SafeBabies is a large company who is producing car seats for babies and toddlers. They sell their products all over the US and abroad. The management team has hired you as a Business Analytics consultant to help them maximizing their profit. 
+
+**The primary task is to determine:**
+
+   1.	the optimal price for selling the car seats at those stores where the shelve location is good (i.e. the product is highly visible)?
+   2.	the optimal price for selling the car seats at those stores where the shelve location is bad (i.e. the product is highly visible)?
+
+**The cost of producing each car seat is $55.0**
+
+   3.	Plot the optimal price for selling the car seats at those stores where the shelve location is good and those where the shelve location is bad when varying the production costs from $40 to $85.
+
+#### ***Our Problem deals with only 3 variables`Sales, Price and ShelveLoc`***
+```{r}
+library(dplyr)
+library(ISLR)
+Safe_Baby <- Carseats[,c(1,6,7)]
+head(Safe_Baby)
+```
+
+#### Understanding our dataset
+```{r}
+str(Safe_Baby)
+summary(Safe_Baby)
+```
+Where
+
+ + Sales is unit sales (in thousands) at each location
+ + Price is the price that company charges for car seats at each site, and 
+ + ShelveLoc is a factor with levels Bad, Good and Medium indicating the quality of the shelving location for the car seats at each store.
+
+We will multiply Sales variable by 1000 as it is in thousands .
+```{r}
+S_Baby <- Safe_Baby %>% 
+  mutate(Sales = Sales * 1000)
+summary(S_Baby)
+```
+
+*** Since the Question asks about the optimal price where the shelve location is good and where it is bad, we will split the data to 2 datasets one for `Good shelve location` and the other for `Bad shelve location`
+
+```{r}
+Good_shelve <- S_Baby %>%
+  filter(ShelveLoc == "Good")
+Bad_shelve <- S_Baby %>%
+  filter(ShelveLoc == "Bad")
+```
+
+#### **Problem Formultion**
+
+The Optimal Price is the price Per Unit that can maximize the total profit
+Maximizing Total Profit means "Maximizing Sales and Price while Minimizing total production Cost"
+
+$$Total Profit = Sales * Profit Margin$$
+We assume a constant production cost per unit `$55`
+
+Sales has a negative relation with price as increase in price causes a decrease in sales 
+
+so our target now is to find the highest sales with highest unit price
+
+the (sales ~ price) function cn be presented by a linear relation as follows:
+
+$$Sales(y) = b_0 + b_1 * Price(x)$$
+$$ Profit Margin =Price Per Unit - Production Cost Per Unit(C)$$
+So, 
+$ Total Profit (TP) = (b_0 + b_1 * Price) * (Price - C)$
+
+$ TP = b_0 * Price - b_0 * C + b_1 * Price^2 - b_1 * Price * C $
+
+$ TP = b_1 * Price^2 + (b_0 - b_1C) Price - b_0C $
+
+we will take the first derivative of the quadratic equation and set the derivative to zero.
+
+$ dTP / dPrice = 2 b_1Price + b_0 - b_1C$
+
+$ 2 b_1Price + b_0 - b_1C = 0 $
+$ 2 b_1Price = -b_0 + b_1C $
+$ Price = (-b_0 +b_1C) / 2b_1$
+$$ Price = \frac{-b_0 + b_1C}{2b_1}$$
+Optimal Price function using the above formula:
+```{r}
+Optimal_Price <- function(cost, b_0, b_1) {
+    return(((-b_0) + (b_1 * cost)) / (2 * b_1))
+}
+```
+
+Finding the Optimal Price for Good Shelve Locations: 
+```{r}
+library(magrittr)
+Good_coefficients <- lm(Sales ~ Price, data = Good_shelve) %>% 
+  use_series("coefficients")
+Good_coefficients
+```
+
+```{r}
+Optimal_Price_Good <- Optimal_Price(55,Good_coefficients[[1]],Good_coefficients[[2]])
+Optimal_Price_Good
+```
+So, The Optimal Price for Good shelve Location is `$164.0731`
+
+
+Finding the Optimal Price for Bad Shelve Locations: 
+```{r}
+Bad_coefficients <- lm(Sales ~ Price, data = Bad_shelve) %>% 
+  use_series("coefficients")
+Bad_coefficients
+```
+
+```{r}
+Optimal_Price_Bad <- Optimal_Price(55,Bad_coefficients[[1]],Bad_coefficients[[2]])
+Optimal_Price_Bad
+```
+So, The Optimal Price for Bad shelve Location is `$134.6435`
+
+
+Plotting the optimal Price for Good and Bad Locations when varying the production costs from $40 to $85
+```{r fig.height=6, fig.width=10}
+library(ggplot2)
+prod_costs <- seq(40, 85, by = 5)
+Good_Optimal_Prices1 <- c()
+Bad_Optimal_Prices1 <- c()
+
+    for (prod_cost in prod_costs) 
+      {
+        Good_Optimal_Price <- Optimal_Price(prod_cost, Good_coefficients[[1]], Good_coefficients[[2]])
+        Good_Optimal_Prices1 <- c(Good_Optimal_Prices1, Good_Optimal_Price)
+      
+        Bad_Optimal_Price <- Optimal_Price(prod_cost, Bad_coefficients[[1]], Bad_coefficients[[2]])
+        Bad_Optimal_Prices1 <- c(Bad_Optimal_Prices1, Bad_Optimal_Price)
+      }
+
+    Optimal_Prices <- data.frame(
+        Optimal_Good_Prices = Good_Optimal_Prices1,
+        Optimal_Bad_Prices = Bad_Optimal_Prices1
+    )
+
+    ggplot(Optimal_Prices) +
+        geom_smooth(aes(x = prod_costs, y = Optimal_Good_Prices, color = "Good"), method = "loess") +
+        geom_smooth(aes(x = prod_costs, y = Optimal_Bad_Prices, color = "Bad"), method = "loess") +
+        labs(
+            color = "ShelveLoc",
+            x = "Production Cost",
+            y = "Optimal Prices",
+            title = "Optimal Price Vs Production Cost"
+        )
+
+```
+We can conclude from the above plot that:
+
+ 1. The Optimal Prices for Good shelve location is higher than the Optimal Prices for Bad shelve location
+ 2. There is a positive linear correlation between Production cost and Optimal Price
