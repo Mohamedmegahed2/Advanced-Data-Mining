@@ -1,0 +1,104 @@
+---
+title: "Assignment 2"
+author: "Mohamed Megahed"
+date: "4/12/2020"
+output:
+  word_document: default
+  html_document: default
+---
+
+### Predict the type of a breast tumor (benign or malignant). 
+**The data is loaded using the mlbench library, data(BreastCancer)**
+A data frame with 699 observations on 11 variables, one being a character variable, 9 being ordered or nominal, and 1 target class.
+
+```{r}
+library(caret)
+library(dplyr)
+library(ggplot2)
+```
+
+
+```{r setup, include=FALSE}
+library(mlbench)
+data("BreastCancer")
+
+```
+
+*** Understanding Data structure
+```{r}
+summary(BreastCancer)
+str(BreastCancer)
+levels(BreastCancer$Class)
+```
+
+Let's calculate the number and percent of missing data and plot them
+** checking if there any missing data using "Amelia package"
+```{r}
+# Check if there are any missing values:
+anyNA(BreastCancer)
+sum(is.na(BreastCancer))
+```
+
+### ploting the missing and observed data values
+```{r, fig.height=7, fig.width=15}
+library(Amelia)
+missmap(BreastCancer, main = "Missing values vs observed",legend = FALSE)
+mean(is.na(BreastCancer))
+```
+** we have 16 missing values in our dataset.
+
+### Cleaning missing data
+```{r}
+Breast <- na.omit(BreastCancer)[,c(2:11)]
+```
+
+```{r}
+library(randomForest)
+set.seed(123)
+intrain <- createDataPartition(y = Breast$Class, p= 0.7, list = FALSE)
+training <- Breast[intrain,]
+testing <- Breast[-intrain,]
+```
+
+```{r}
+set.seed(123)
+rf.model<-train(Class~.,data=training,method='rf')
+rf.model
+```
+
+## Grid search with Bootstrapped Resampling
+```{r}
+set.seed(123)
+Grid_Serach <- expand.grid(.mtry=c(2,6,8))
+#Building a random forest model
+RF_Grid_Boot<-train(Class~.,
+                 data=training,
+                 method='rf',
+                 tuneGrid=Grid_Serach)
+print(RF_Grid_Boot)
+plot(RF_Grid_Boot)
+
+preds_rf_boot <- predict(RF_Grid_Boot, testing[1:9])              
+
+confusionMatrix(table(preds_rf_boot, testing$Class))
+```
+
+## Grid Search with Cross-Validation (10 fold, repeated 4 times)
+```{r}
+set.seed(123)
+control <- trainControl(method="repeatedcv", number=10, repeats=4, search="grid")
+Grid_Serach <- expand.grid(.mtry=c(2,6,8))
+# Random forest Model Building
+RF_Grid_CV<-train(Class~.,
+                 data=training,
+                 method='rf',
+                 tuneGrid=Grid_Serach,
+                 trControl=control
+               )
+print(RF_Grid_CV)
+plot(RF_Grid_CV)
+#Prediction using test data
+preds_rf_cv <- predict(RF_Grid_CV, testing[1:9])              
+confusionMatrix(table(preds_rf_cv, testing$Class))
+```
+***From the above analysis we can notice that  The 10-fold cross validation has a better accuracy than bootstrapped resampling.***
