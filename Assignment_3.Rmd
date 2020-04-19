@@ -1,0 +1,67 @@
+---
+title: "Assignment 3"
+author: "Mohamed Megahed"
+date: "4/18/2020"
+output:
+  html_document: default
+  word_document: default
+---
+
+## Market Basket Analysis on the Groceries Data
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# Libraries Loading
+library(dplyr)
+library(arules)
+library(arulesViz)
+# Loading Dataset into a sparse matrix
+groceries <- read.transactions("C:/E/MSBA/Spring 2020/Adv Data Mining/Assignment 3/groceries_v2.csv", sep = ",")
+summary(groceries)
+```
+
+# examine the frequency of items
+```{r}
+itemFrequency(groceries[, 1:5])
+```
+
+# plot the frequency of items
+```{r, fig.height=9, fig.width=15}
+itemFrequencyPlot(groceries, support = 0.06)
+itemFrequencyPlot(groceries, topN = 20)
+```
+
+# set better support and confidence levels to learn more rules
+```{r}
+Association_rules <- apriori(groceries, parameter = list(support = 0.01, confidence = 0.5, target = "rules"))
+Association_rules
+summary(Association_rules)
+```
+
+In the final section of the summary() output, we receive mining information, telling us about how the rules were chosen. Here, we see that the groceries data, which contained 9,834 transactions, was used to construct rules with a minimum support of 0.01 and minimum confidence of 0.5.
+
+# Look at the first five rules
+```{r}
+inspect(Association_rules[1:5])
+```
+***The first rule can be read in plain language as, "if a customer buys *curd,yogurt*, they will also buy whole milk." With support of 0.010 and confidence of 0.582.***
+
+# Sorting the rules based on confidence:
+```{r}
+Association_rules_Sorted <- sort(Association_rules, by='confidence', decreasing = TRUE)
+summary(Association_rules_Sorted)
+```
+
+# The Association rules with there support, confidence:
+```{r}
+inspect(Association_rules_Sorted)
+```
+
+# Sorting Association rules by lift, Support, Confidence
+```{r}
+inspect(sort(Association_rules, by = "lift")[1:5])
+```
+***These rules are more interesting than that we looked at previously. The first rule, with a lift of about 3.030, implies that people who buy **citrus fruit,root vegetables** are nearly three times more likely to buy **other vegetables** than the typical customers***
