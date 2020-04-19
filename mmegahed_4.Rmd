@@ -1,0 +1,72 @@
+---
+title: "Assignment 4"
+author: "Mohamed Megahed"
+date: "4/18/2020"
+output:
+  word_document: default
+  html_document: default
+---
+
+### Predict the type of a breast tumor (benign or malignant). 
+**The data is loaded using the mlbench library, data(BreastCancer)**
+A data frame with 699 observations on 11 variables, one being a character variable, 9 being ordered or nominal, and 1 target class.
+
+```{r}
+library(caret)
+```
+
+```{r setup, include=FALSE}
+library(mlbench)
+data("BreastCancer")
+```
+
+*** Understanding Data structure
+```{r}
+summary(BreastCancer)
+levels(BreastCancer$Class)
+```
+
+** checking if there any missing data
+```{r}
+# Check if there are any missing values:
+anyNA(BreastCancer)
+sum(is.na(BreastCancer))
+```
+** we have 16 missing values in our dataset.
+### Cleaning missing and excluding the ID variable
+```{r}
+B_Cancer <- na.omit(BreastCancer)[,c(2:11)]
+```
+
+```{r}
+set.seed(123)
+intrain <- createDataPartition(y = B_Cancer$Class, p= 0.7, list = FALSE)
+train_data <- B_Cancer[intrain,]
+test_data <- B_Cancer[-intrain,]
+```
+
+```{r}
+set.seed(123)
+svm.model<-train(Class~.,data=train_data,method='svmLinear', scale = FALSE)
+svm.model
+```
+
+### Examining cost values (1,2.5,6.25) and Predicting the test data
+```{r}
+set.seed(123)
+Grid_Serach <- expand.grid(.C=c(1,2.5,6.25))
+#Building a support vector machine model
+svm_Grid<-train(Class~.,
+                 data=train_data,
+                 method='svmLinear',
+                 tuneGrid=Grid_Serach,
+                 scale = FALSE)
+svm_Grid
+
+preds_svm_test <- predict(svm_Grid, test_data[1:9])  # predicting with the new SVM model        
+table(pred = preds_svm_test, true = test_data$Class)
+
+plot(svm_Grid)
+```
+
+***After examining the (1,2.5,6.25) values of cost it is clear that when Cost is equal 1 it has the best accuracy which is 94.47%***
